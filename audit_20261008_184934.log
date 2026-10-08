@@ -1,0 +1,13 @@
+Starting Security Baseline Audit...
+
+=== [1] Auditing SSH Configuration ===
+[1;33m[WARN] SSH server not installed (/etc/ssh/sshd_config missing).[0m
+
+=== [2] Auditing Kernel Parameters (sysctl) ===
+[0;32m[PASS] TCP SYN Cookies (Flood Protection) enabled.[0m
+[0;31m[FAIL] ICMP Redirects are allowed.[0m
+
+=== [3] Auditing Firewall (UFW) Status ===
+[0;31m[FAIL] UFW Firewall is INACTIVE.[0m
+
+Audit complete. Log written to audit_20261008_184934.log
