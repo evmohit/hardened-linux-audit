@@ -121,17 +121,19 @@ audit_users() {
         log "${RED}[FAIL] Unauthorized non-root UID 0 account(s) found: ${EXTRA_ROOTS}${NC}"
     fi
 
-    # 3. Check MAX_DAYS password expiration policy in /etc/login.defs
+    # 3. Check MAX_DAYS password expiration policy in /etc/login.defs & human user accounts
     MAX_DAYS=$(grep -E "^PASS_MAX_DAYS" /etc/login.defs | awk '{print $2}')
-    if [ -n "$MAX_DAYS" ] && [ "$MAX_DAYS" -le 90 ]; then
-        log "${GREEN}[PASS] Password Max Days policy is compliant (${MAX_DAYS} days).${NC}"
+    USER_MAX_EXCEEDED=$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd | while read -r u; do awk -F: -v user="$u" '$1 == user && ($5 > 90 || $5 == "") {print $1}' /etc/shadow; done)
+
+    if [ -n "$MAX_DAYS" ] && [ "$MAX_DAYS" -le 90 ] && [ -z "$USER_MAX_EXCEEDED" ]; then
+        log "${GREEN}[PASS] Password Max Days policy is compliant (90 days).${NC}"
     else
-        log "${RED}[FAIL] Password Max Days policy is insecure (${MAX_DAYS:-99999} days, should be <= 90).${NC}"
+        log "${RED}[FAIL] Insecure Password Max Days detected (login.defs: ${MAX_DAYS:-99999}, Non-compliant users: ${USER_MAX_EXCEEDED:-none}).${NC}"
         if [ "$AUTO_FIX" = true ]; then
             log "${YELLOW}[FIXING] Setting PASS_MAX_DAYS to 90 in /etc/login.defs and updating existing users...${NC}"
             sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\t90/' /etc/login.defs
             
-            # Apply 90 days limit to all regular existing users (UID >= 1000)
+            # Apply 90 days limit to all regular existing human users (UID >= 1000)
             awk -F: '$3 >= 1000 && $1 != "nobody" { print $1 }' /etc/passwd | while read -r user; do
                 chage -M 90 "$user"
             done
