@@ -1,6 +1,0 @@
-Starting Security Baseline Audit...
-
-=== [1] Auditing SSH Configuration ===
-[0;31m[FAIL] PermitRootLogin is enabled or not explicitly set to 'no'.[0m
-
-Audit complete. Log written to audit_20261008_110704.log
