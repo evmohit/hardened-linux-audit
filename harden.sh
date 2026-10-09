@@ -14,7 +14,6 @@ NC='\033[0m' # No Color
 LOG_FILE="audit_$(date +%Y%m%d_%H%M%S).log"
 AUTO_FIX=false
 
-# Check for --fix flag
 if [[ "${1:-}" == "--fix" ]]; then
     AUTO_FIX=true
 fi
@@ -103,12 +102,46 @@ audit_ufw() {
     fi
 }
 
+audit_users() {
+    log "\n=== [4] Auditing User Accounts & Passwords ==="
+    
+    # 1. Check for empty password fields in /etc/shadow
+    EMPTY_PASS=$(awk -F: '($2 == "") { print $1 }' /etc/shadow)
+    if [ -z "$EMPTY_PASS" ]; then
+        log "${GREEN}[PASS] No accounts with empty passwords found.${NC}"
+    else
+        log "${RED}[FAIL] Account(s) with empty password found: ${EMPTY_PASS}${NC}"
+    fi
+
+    # 2. Check for unauthorized UID 0 accounts (other than root)
+    EXTRA_ROOTS=$(awk -F: '($3 == 0 && $1 != "root") { print $1 }' /etc/passwd)
+    if [ -z "$EXTRA_ROOTS" ]; then
+        log "${GREEN}[PASS] Only 'root' user has UID 0 privileges.${NC}"
+    else
+        log "${RED}[FAIL] Unauthorized non-root UID 0 account(s) found: ${EXTRA_ROOTS}${NC}"
+    fi
+
+    # 3. Check MAX_DAYS password expiration policy in /etc/login.defs
+    MAX_DAYS=$(grep -E "^PASS_MAX_DAYS" /etc/login.defs | awk '{print $2}')
+    if [ -n "$MAX_DAYS" ] && [ "$MAX_DAYS" -le 90 ]; then
+        log "${GREEN}[PASS] Password Max Days policy is compliant (${MAX_DAYS} days).${NC}"
+    else
+        log "${RED}[FAIL] Password Max Days policy is insecure (${MAX_DAYS:-99999} days, should be <= 90).${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Setting PASS_MAX_DAYS to 90 in /etc/login.defs...${NC}"
+            sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\t90/' /etc/login.defs
+            log "${GREEN}[FIXED] Password Max Days updated to 90 days.${NC}"
+        fi
+    fi
+}
+
 main() {
     check_root
     log "Starting Security Baseline Audit (Fix Mode: ${AUTO_FIX})..."
     audit_ssh
     audit_sysctl
     audit_ufw
+    audit_users
     log "\nTask complete. Log written to ${LOG_FILE}"
 }
 

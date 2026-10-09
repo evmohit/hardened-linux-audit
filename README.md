@@ -6,6 +6,7 @@ Automated Bash script to audit and harden Debian, Ubuntu, and Linux Mint systems
 - **SSH Configuration:** Root login policy audit and auto-remediation.
 - **Kernel Hardening (`sysctl`):** TCP SYN flood protection and ICMP redirect checks/remediation.
 - **Firewall (`ufw`):** Uncomplicated Firewall status check and automated rule enforcement.
+- **User Accounts & Passwords:** Empty password audit, UID 0 privilege scan, and `PASS_MAX_DAYS` expiration enforcement.
 
 ## Usage
 
