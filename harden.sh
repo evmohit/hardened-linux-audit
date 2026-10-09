@@ -128,9 +128,14 @@ audit_users() {
     else
         log "${RED}[FAIL] Password Max Days policy is insecure (${MAX_DAYS:-99999} days, should be <= 90).${NC}"
         if [ "$AUTO_FIX" = true ]; then
-            log "${YELLOW}[FIXING] Setting PASS_MAX_DAYS to 90 in /etc/login.defs...${NC}"
+            log "${YELLOW}[FIXING] Setting PASS_MAX_DAYS to 90 in /etc/login.defs and updating existing users...${NC}"
             sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\t90/' /etc/login.defs
-            log "${GREEN}[FIXED] Password Max Days updated to 90 days.${NC}"
+            
+            # Apply 90 days limit to all regular existing users (UID >= 1000)
+            awk -F: '$3 >= 1000 && $1 != "nobody" { print $1 }' /etc/passwd | while read -r user; do
+                chage -M 90 "$user"
+            done
+            log "${GREEN}[FIXED] Password Max Days updated to 90 days for system defaults and existing users.${NC}"
         fi
     fi
 }
