@@ -142,6 +142,59 @@ audit_users() {
     fi
 }
 
+audit_services_and_perms() {
+    log "\n=== [5] Auditing Unnecessary Services & File Permissions ==="
+
+    # 1. Check for insecure/unnecessary services (e.g., telnet, vsftpd, rsh-server)
+    INSECURE_SERVICES=("telnet" "vsftpd" "rsh-server" "nis")
+    FOUND_SERVICES=()
+
+    for srv in "${INSECURE_SERVICES[@]}"; do
+        if systemctl is-active --quiet "$srv" 2>/dev/null; then
+            FOUND_SERVICES+=("$srv")
+        fi
+    done
+
+    if [ ${#FOUND_SERVICES[@]} -eq 0 ]; then
+        log "${GREEN}[PASS] No insecure legacy services running.${NC}"
+    else
+        log "${RED}[FAIL] Insecure active service(s) detected: ${FOUND_SERVICES[*]}${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            for srv in "${FOUND_SERVICES[@]}"; do
+                log "${YELLOW}[FIXING] Disabling and stopping service: ${srv}...${NC}"
+                systemctl disable --now "$srv" >/dev/null 2>&1 || true
+            done
+            log "${GREEN}[FIXED] Insecure services disabled.${NC}"
+        fi
+    fi
+
+    # 2. Check permissions on /etc/shadow (Must be 600 or 640)
+    SHADOW_PERM=$(stat -c "%a" /etc/shadow 2>/dev/null || echo "000")
+    if [ "$SHADOW_PERM" -eq 600 ] || [ "$SHADOW_PERM" -eq 640 ]; then
+        log "${GREEN}[PASS] /etc/shadow permissions are secure (${SHADOW_PERM}).${NC}"
+    else
+        log "${RED}[FAIL] /etc/shadow permissions are insecure (${SHADOW_PERM}, should be 600 or 640).${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Setting /etc/shadow permissions to 600...${NC}"
+            chmod 600 /etc/shadow
+            log "${GREEN}[FIXED] /etc/shadow permissions updated to 600.${NC}"
+        fi
+    fi
+
+    # 3. Check permissions on /etc/passwd (Must be 644)
+    PASSWD_PERM=$(stat -c "%a" /etc/passwd 2>/dev/null || echo "000")
+    if [ "$PASSWD_PERM" -eq 644 ]; then
+        log "${GREEN}[PASS] /etc/passwd permissions are secure (${PASSWD_PERM}).${NC}"
+    else
+        log "${RED}[FAIL] /etc/passwd permissions are insecure (${PASSWD_PERM}, should be 644).${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Setting /etc/passwd permissions to 644...${NC}"
+            chmod 644 /etc/passwd
+            log "${GREEN}[FIXED] /etc/passwd permissions updated to 644.${NC}"
+        fi
+    fi
+}
+
 main() {
     check_root
     log "Starting Security Baseline Audit (Fix Mode: ${AUTO_FIX})..."
@@ -149,6 +202,7 @@ main() {
     audit_sysctl
     audit_ufw
     audit_users
+    audit_services_and_perms
     log "\nTask complete. Log written to ${LOG_FILE}"
 }
 
