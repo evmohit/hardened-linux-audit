@@ -2,16 +2,19 @@
 
 Automated Bash script to audit and harden Debian, Ubuntu, and Linux Mint systems against common security baseline configurations.
 
-## Features Audited
-- **SSH Configuration:** Root login policy audit.
-- **Kernel Hardening (`sysctl`):** TCP SYN flood protection and ICMP redirect checks.
-- **Firewall (`ufw`):** Uncomplicated Firewall active status check.
+## Features
+- **SSH Configuration:** Root login policy audit and auto-remediation.
+- **Kernel Hardening (`sysctl`):** TCP SYN flood protection and ICMP redirect checks/remediation.
+- **Firewall (`ufw`):** Uncomplicated Firewall status check and automated rule enforcement.
 
 ## Usage
 
 ```bash
-# Make executable
+# Make script executable
 chmod +x harden.sh
 
-# Run audit (requires root)
+# Run security audit (Audit mode)
 sudo ./harden.sh
+
+# Run auto-remediation (Fix mode)
+sudo ./harden.sh --fix
