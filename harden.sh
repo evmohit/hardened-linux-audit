@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # Hardened Linux Audit & Security Baseline Script
+# Author: Evmohit
 # Supports: Debian, Ubuntu, Linux Mint
+# Version: 1.0.0
 #
 
 # Colors for output readability
@@ -341,6 +343,7 @@ interactive_menu() {
 
         echo -e "${BLUE}=============================================${NC}"
         echo -e "${GREEN}       LINUX HARDENING & AUDIT SCRIPT        ${NC}"
+        echo -e "${YELLOW}               Author: Evmohit               ${NC}"
         echo -e "${BLUE}=============================================${NC}"
         echo -e " Auto-Fix Mode: ${FIX_STATUS}"
         echo -e "${BLUE}---------------------------------------------${NC}"

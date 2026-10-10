@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="Hardened Linux Audit Logo" width="200px">
+</p>
+
 # Hardened Linux Audit & Security Baseline
 
 Automated Bash script to audit and harden Debian, Ubuntu, and Linux Mint systems against common security baseline configurations.
