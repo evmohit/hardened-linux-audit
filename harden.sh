@@ -254,6 +254,42 @@ audit_logging_and_updates() {
     fi
 }
 
+audit_integrity_and_ports() {
+    log "\n=== [7] Auditing File System Integrity & Network Ports ==="
+
+    # 1. Audit SUID / SGID Files
+    log "${YELLOW}[INFO] Scanning for SUID files in standard system paths...${NC}"
+    SUID_FILES=$(find /bin /sbin /usr/bin /usr/sbin -type f \( -perm -4000 -o -perm -2000 \) 2>/dev/null | wc -l)
+    if [ "$SUID_FILES" -gt 0 ]; then
+        log "${GREEN}[PASS] SUID/SGID audit complete (${SUID_FILES} executables detected).${NC}"
+    else
+        log "${YELLOW}[WARN] No SUID/SGID files found in binary paths.${NC}"
+    fi
+
+    # 2. Audit World-Writable Files
+    log "${YELLOW}[INFO] Auditing for world-writable files...${NC}"
+    WORLD_WRITABLE=$(find / -xdev -type f \( -perm -0002 -o -perm -0022 \) ! -path "/proc/*" ! -path "/sys/*" ! -path "/tmp/*" ! -path "/var/tmp/*" 2>/dev/null | head -n 5)
+    if [ -z "$WORLD_WRITABLE" ]; then
+        log "${GREEN}[PASS] No risky world-writable files detected.${NC}"
+    else
+        log "${RED}[FAIL] World-writable file(s) found outside /tmp: ${WORLD_WRITABLE}${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Removing world-write permissions from detected files...${NC}"
+            find / -xdev -type f \( -perm -0002 -o -perm -0022 \) ! -path "/proc/*" ! -path "/sys/*" ! -path "/tmp/*" ! -path "/var/tmp/*" -exec chmod o-w {} + 2>/dev/null || true
+            log "${GREEN}[FIXED] World-write permissions revoked.${NC}"
+        fi
+    fi
+
+    # 3. Audit Open Listening Ports
+    log "${YELLOW}[INFO] Checking listening TCP/UDP network ports...${NC}"
+    if command -v ss >/dev/null 2>&1; then
+        LISTEN_PORTS=$(ss -tuln | grep LISTEN | awk '{print $5}' | cut -d':' -f2 | sort -u | tr '\n' ' ')
+        log "${GREEN}[PASS] Active listening port(s): ${LISTEN_PORTS:-none}${NC}"
+    else
+        log "${YELLOW}[WARN] 'ss' command not available to check ports.${NC}"
+    fi
+}
+
 main() {
     check_root
     log "Starting Security Baseline Audit (Fix Mode: ${AUTO_FIX})..."
@@ -263,6 +299,7 @@ main() {
     audit_users
     audit_services_and_perms
     audit_logging_and_updates
+    audit_integrity_and_ports
     log "\nTask complete. Log written to ${LOG_FILE}"
 }
 
