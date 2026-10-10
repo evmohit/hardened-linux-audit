@@ -25,3 +25,7 @@ sudo ./harden.sh
 
 # Run full security audit with auto-remediation directly via flag
 sudo ./harden.sh --fix
+
+## Disclaimer
+
+This script is provided "as is," without warranty of any kind, express or implied. Hardening scripts modify system configurations, firewall rules, and service settings. Always test this script in a staging or non-production environment before running it on critical systems. The author takes no responsibility for any system downtime, locked-out access, or unintended configuration changes.
