@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 # Global variables
 AUTO_FIX=false
 LOG_FILE="audit_$(date +%Y%m%d_%H%M%S).log"
+HTML_REPORT="audit_report_$(date +%Y%m%d_%H%M%S).html"
 
 # Logging function
 log() {
@@ -26,6 +27,45 @@ check_root() {
         echo -e "${RED}[ERROR] This script must be run as root (sudo).${NC}" >&2
         exit 1
     fi
+}
+
+# Generate HTML Security Report
+generate_html_report() {
+    cat << EOF > "$HTML_REPORT"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Linux Hardening & Security Audit Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e1e; color: #d4d4d4; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #252526; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { color: #4ec9b0; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .meta { color: #858585; margin-bottom: 20px; font-size: 0.9em; }
+        .log-box { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; font-size: 0.9em; color: #9cdcfe; max-height: 500px; overflow-y: auto; }
+        .footer { margin-top: 20px; text-align: center; color: #666; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Linux Hardening & Audit Report</h1>
+        <div class="meta">
+            <strong>Generated on:</strong> $(date) <br>
+            <strong>Host:</strong> $(hostname) <br>
+            <strong>Auto-Fix Mode:</strong> ${AUTO_FIX}
+        </div>
+        <h3>Execution Logs</h3>
+        <div class="log-box">
+$(cat "$LOG_FILE" | sed 's/&/&amp;/g; s/</&lt;/g; s/>/&gt;/g')
+        </div>
+        <div class="footer">
+            Hardened Linux Audit & Security Baseline Script
+        </div>
+    </div>
+</body>
+</html>
+EOF
+    log "\n${GREEN}[INFO] HTML Report successfully generated: ${HTML_REPORT}${NC}"
 }
 
 # [1] SSH Configuration Audit
@@ -286,13 +326,13 @@ run_all_audits() {
     audit_logging_and_updates
     audit_integrity_and_ports
     log "\nTask complete. Log written to ${LOG_FILE}"
+    generate_html_report
 }
 
 # Interactive Menu Function
 interactive_menu() {
     while true; do
         clear
-        # Determine status color/text for Auto-Fix
         if [ "$AUTO_FIX" = true ]; then
             FIX_STATUS="${GREEN}ENABLED (ON)${NC}"
         else
@@ -316,9 +356,10 @@ interactive_menu() {
         echo " 9. Audit System Logging & Updates"
         echo " 10. Audit File Integrity & Ports"
         echo -e "${BLUE}---------------------------------------------${NC}"
-        echo " 11. Exit"
+        echo " 11. Generate HTML Report from Latest Log"
+        echo " 12. Exit"
         echo -e "${BLUE}=============================================${NC}"
-        read -p "Select an option [1-11]: " choice
+        read -p "Select an option [1-12]: " choice
 
         case $choice in
             1)
@@ -335,7 +376,7 @@ interactive_menu() {
                     log "${YELLOW}[INFO] Auto-Fix mode disabled.${NC}"
                 else
                     AUTO_FIX=true
-                    log "${GREEN}[INFO] Auto-Fix mode enabled. Remediation will apply to single modules too!${NC}"
+                    log "${GREEN}[INFO] Auto-Fix mode enabled.${NC}"
                 fi
                 sleep 1
                 continue
@@ -376,11 +417,20 @@ interactive_menu() {
                 audit_integrity_and_ports
                 ;;
             11)
+                if [ -f "$LOG_FILE" ]; then
+                    generate_html_report
+                    echo -e "${GREEN}HTML report generated successfully! You can open it with:${NC}"
+                    echo -e "${BLUE}firefox ${HTML_REPORT}&${NC}"
+                else
+                    echo -e "${RED}[ERROR] No log file found yet. Run an audit first!${NC}"
+                fi
+                ;;
+            12)
                 echo -e "${GREEN}Exiting. Stay secure!${NC}"
                 exit 0
                 ;;
             *)
-                echo -e "${RED}[ERROR] Invalid option. Please choose between 1 and 11.${NC}"
+                echo -e "${RED}[ERROR] Invalid option. Please choose between 1 and 12.${NC}"
                 ;;
         esac
         echo -e "\n---------------------------------------------"
