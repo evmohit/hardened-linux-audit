@@ -195,6 +195,65 @@ audit_services_and_perms() {
     fi
 }
 
+audit_logging_and_updates() {
+    log "\n=== [6] Auditing System Logging & Security Updates ==="
+
+    # 1. Audit auditd service (Linux Audit Framework)
+    if systemctl is-active --quiet auditd 2>/dev/null; then
+        log "${GREEN}[PASS] Audit daemon (auditd) is active.${NC}"
+    else
+        log "${RED}[FAIL] Audit daemon (auditd) is inactive or missing.${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Installing/enabling auditd...${NC}"
+            apt-get update -qq >/dev/null 2>&1 || true
+            apt-get install -y auditd >/dev/null 2>&1 || true
+            systemctl enable --now auditd >/dev/null 2>&1 || true
+            log "${GREEN}[FIXED] auditd installed and activated.${NC}"
+        fi
+    fi
+
+    # 2. Audit rsyslog service
+    if systemctl is-active --quiet rsyslog 2>/dev/null; then
+        log "${GREEN}[PASS] System logging daemon (rsyslog) is active.${NC}"
+    else
+        log "${RED}[FAIL] System logging daemon (rsyslog) is inactive or missing.${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Enabling rsyslog...${NC}"
+            systemctl enable --now rsyslog >/dev/null 2>&1 || true
+            log "${GREEN}[FIXED] rsyslog service activated.${NC}"
+        fi
+    fi
+
+    # 3. Audit /var/log/syslog file permissions (Must be 640 or 600)
+    if [ -f /var/log/syslog ]; then
+        LOG_PERM=$(stat -c "%a" /var/log/syslog 2>/dev/null || echo "000")
+        if [ "$LOG_PERM" -eq 640 ] || [ "$LOG_PERM" -eq 600 ]; then
+            log "${GREEN}[PASS] /var/log/syslog permissions are secure (${LOG_PERM}).${NC}"
+        else
+            log "${RED}[FAIL] /var/log/syslog permissions are insecure (${LOG_PERM}, should be 640 or 600).${NC}"
+            if [ "$AUTO_FIX" = true ]; then
+                log "${YELLOW}[FIXING] Setting /var/log/syslog permissions to 640...${NC}"
+                chmod 640 /var/log/syslog
+                log "${GREEN}[FIXED] /var/log/syslog permissions set to 640.${NC}"
+            fi
+        fi
+    else
+        log "${YELLOW}[WARN] /var/log/syslog does not exist on this system.${NC}"
+    fi
+
+    # 4. Audit unattended-upgrades package
+    if dpkg -s unattended-upgrades >/dev/null 2>&1; then
+        log "${GREEN}[PASS] Unattended-upgrades package is installed.${NC}"
+    else
+        log "${RED}[FAIL] Unattended-upgrades package is not installed.${NC}"
+        if [ "$AUTO_FIX" = true ]; then
+            log "${YELLOW}[FIXING] Installing unattended-upgrades...${NC}"
+            apt-get install -y unattended-upgrades >/dev/null 2>&1 || true
+            log "${GREEN}[FIXED] Unattended-upgrades installed.${NC}"
+        fi
+    fi
+}
+
 main() {
     check_root
     log "Starting Security Baseline Audit (Fix Mode: ${AUTO_FIX})..."
@@ -203,6 +262,7 @@ main() {
     audit_ufw
     audit_users
     audit_services_and_perms
+    audit_logging_and_updates
     log "\nTask complete. Log written to ${LOG_FILE}"
 }
 

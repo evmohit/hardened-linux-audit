@@ -10,6 +10,7 @@ Automated Bash script to audit and harden Debian, Ubuntu, and Linux Mint systems
 - **User Accounts & Passwords:** Empty password audit, UID 0 privilege scan, and `PASS_MAX_DAYS` expiration policy enforcement for system defaults and human accounts (UID >= 1000).
 - **Unnecessary Services:** Audits and auto-disables insecure legacy services (`telnet`, `vsftpd`, `rsh-server`, `nis`).
 - **File Permissions:** Verifies and corrects critical security file permissions (`/etc/shadow` to `600`/`640` and `/etc/passwd` to `644`).
+- **System Logging & Updates:** Audits and enforces active `auditd` and `rsyslog` daemons, restricts `/var/log/syslog` permissions (`640`/`600`), and ensures `unattended-upgrades` is installed for automatic security patching.
 
 ## Usage
 
